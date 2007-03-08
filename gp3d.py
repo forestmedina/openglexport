@@ -139,6 +139,46 @@ class Esqueleto():
             f.write(struct.pack("<f",h.matrix_local[1][3]));#VextexSize 3 (x,y,z)
             f.write(struct.pack("<f",h.matrix_local[2][3]));#VextexSize 3 (x,y,z)
             f.write(struct.pack("<f",h.matrix_local[3][3]));#VextexSize 3 (x,y,z)
+            if h.name=="espada":
+                f.write(struct.pack("<i",1));#VextexSize 3 (x,y,z)
+            else:
+                f.write(struct.pack("<i",0));#VextexSize 3 (x,y,z)
+
+            if(h.name=="espada"):
+                f.write(struct.pack("<i",2));#VextexSize 3 (x,y,z)
+            elif h.name=="cuerpo":
+                f.write(struct.pack("<i",1));#VextexSize 3 (x,y,z)
+            elif h.name=="brazo.L":
+                f.write(struct.pack("<i",3));#VextexSize 3 (x,y,z)
+            elif h.name=="brazo.R":
+                f.write(struct.pack("<i",3));#VextexSize 3 (x,y,z)
+            elif h.name=="pierna.L":
+                f.write(struct.pack("<i",3));#VextexSize 3 (x,y,z)
+            elif h.name=="pierna.R":
+                f.write(struct.pack("<i",3));#VextexSize 3 (x,y,z)
+            else:
+                f.write(struct.pack("<i",1));#VextexSize 3 (x,y,z)
+
+
+class Exporter(bpy.types.Operator, ExportHelper):
+    bl_idname       = "export_opengl.gpb";
+    bl_label        = "Exportador OPENGL personalizado";
+    bl_options      = {'PRESET'};
+    filename_ext    = ".mesh";
+    objetos=[];
+    expmapa = bpy.props.BoolProperty(
+            name="Exportar como mapa",
+            description="Exporta todos los objetos como un Mapa",
+            default=False,
+            )
+    
+    def printvert(self,v):
+        sys.stdout.write("vert ")
+        sys.stdout.write("co(")
+        sys.stdout.write(str(v.co[0]))
+        sys.stdout.write(",")
+        sys.stdout.write(str(v.co[1]))
+        sys.stdout.write(",")
 
 
 class Exporter(bpy.types.Operator, ExportHelper):
