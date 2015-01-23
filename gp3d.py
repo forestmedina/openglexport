@@ -5,6 +5,7 @@ Created on 10/05/2013
 '''
 
 import bpy;
+import sys;
 import os;
 import struct;
 import math;
@@ -18,7 +19,6 @@ from bpy.utils import (
 
 def register():
     register_class(Exporter)
-    register_class(VoxelizarOP)
     register_class(FileHeader)
     register_class(FileBody)
     register_class(PanelOpciones)
@@ -26,7 +26,6 @@ def register():
 
 def unregister():
     unregister_class(Exporter)
-    unregister_class(VoxelizarOP)
     unregister_class(FileHeader)
     unregister_class(FileBody)
     unregister_class(PanelOpciones)
@@ -43,130 +42,19 @@ class PanelOpciones(bpy.types.Panel):
         obj = bpy.context.active_object
         self.layout.prop(obj, "colisionador","Colisionador");
 
-class VoxelizarOP(bpy.types.Operator):
-    bl_idname = "export_opengl.voxelizar"
-    bl_label = "Minimal Operator"
-
-    def execute(self, context):
-        voxelizar()
-        return {'FINISHED'}
 
 class Vertice():
     def __init__(self):
         self.co=[0.0]*3;
         self.normal=[0.3]*3;
-        self.color=[0.0]*3;
+        self.color=[1.0]*3;
+        self.uv=[0.0]*2;
         return;
-def pointInsideMesh(ob, pt):
-        Vector = mathutils.Vector
-        def ptInFaceXYBounds(mesh,f,_pt):
-               # print("intersecta xy")
-                v1=mesh.vertices[f.vertices[0]]
-                v2=mesh.vertices[f.vertices[1]]
-                v3=mesh.vertices[f.vertices[2]]
-                xmax= xmin= v1.co.x
-                ymax= ymin= v1.co.y
 
-                xmax= max(xmax, v2.co.x)
-                xmin= min(xmin, v2.co.x)
-
-                ymax= max(ymax, v2.co.y)
-                ymin= min(ymin, v2.co.y)
-
-                xmax= max(xmax, v3.co.x)
-                xmin= min(xmin, v3.co.x)
-
-                ymax= max(ymax, v3.co.y)
-                ymin= min(ymin, v3.co.y)
- 
-		# Now we have the bounds, see if the point is in it.
-                return (xmin <= _pt.x <= xmax) and (ymin <= _pt.y <= ymax)
- 
-        def faceIntersect(mesh,f,_ray,_pt):
-                #print("intersecta tirangulo")
-                v1=mesh.vertices[f.vertices[0]]
-                v2=mesh.vertices[f.vertices[1]]
-                v3=mesh.vertices[f.vertices[2]]
-                if len(f.vertices)==4:
-                    v4=mesh.vertices[f.vertices[3]]
-                #print("rayo:");
-                #print(ray);
-                #print("obSpacept:");
-                #print(obSpacePt);
-                isect = mathutils.geometry.intersect_ray_tri(v1.co, v2.co, v3.co, _ray, _pt, True) # Clipped.
-                #if isect is None:
-                    # print("isect")
-                    #print(_pt)
-                    #print("--")
-                    #print(v1.co)
-                    #print(v2.co)
-                    #print(v3.co)
-        #            print (isect.z);
-        #            print (obSpacePt.z);
-               # if not isect and len(f.vertices) == 4:
-               #     isect = mathutils.geometry.intersect_ray_tri(v2.co, v3.co, v4.co, ray, pt, True) # Clipped.
-                return bool(isect is not None ) # This is so the ray only counts if its above the point. 
-        obImvMat = mathutils.Matrix(ob.matrix_world)
-        obImvMat.invert()
-        pt.resize_4d()
-        obSpacePt = pt* obImvMat
-        pt.resize_3d()
-        obSpacePt.resize_3d()
-
-        me= ob.data
-        niz=0;
-        nix=0;
-        niy=0;
-        niw=0;
-        niv=0;
-        ptOr=pt;
-        ray = Vector((0.0,0.0,-1.0))
-        for f in me.polygons:
-            if ptInFaceXYBounds(me,f,pt) or False:
-
-                pt=ptOr
-                #print("***")
-                if  faceIntersect(me,f,ray,pt):
-                    niz=niz+1;
-#            ray = Vector((-1,0,0))
-             #pt=ptOr+Vector((0.38,0.45,0.0));
-#        print("ni")
-#        print(niz)
-#        print(nix)
-#        print(niy)
-#        print(niw)
-#        print(niv)
-
-        #return  niz%2!=0 or nix%2!=0 or niy%2!=0 or niw%2!=0 or niv%2!=0
-        #return  ((niz%2)+(nix%2)+(niy%2)+(niw%2)+(niv%2))>2
-        return  (niz%2)!=0
-
-
-def voxelizar():
-    ob= bpy.context.active_object
-    p1=ob.bound_box[0];
-    p2=ob.bound_box[6];
-#    f.write(struct.pack("<I",round(p1[0])-round(p2[0])));
-#    f.write(struct.pack("<I",round(p1[1])-round(p2[1])));
-#    f.write(struct.pack("<I",round(p1[2])-round(p2[2])));
-    for z in range(round(p1[2]),round(p2[2])):
-        for y in range(round(p1[1]),round(p2[1])):
-            for x in range(round(p1[0]),round(p2[0])):
-                p=mathutils.Vector((float(x),float(y),float(z)));
-              #  print("Revisando Punto");
-               # print(p);
-                if pointInsideMesh(ob,p):
-            #        bpy.ops.mesh.primitive_cube_add(radius=0.5,location=p)
- #                   f.write(struct.pack("<B",1));
-                     bpy.ops.object.add(radius=0.5,location=p)
-                #    print("si")
-                     a=True;
-
-    p=mathutils.Vector((9.0,-12.0,5.0));
-    print("Revisando Punto");
-    print(p);
-    if pointInsideMesh(ob,p):
-         print("si")
+class Cara():
+    def __init__(self):
+        self.vertices=[0]*3;
+        return;
 
 
 class Mesh():
@@ -177,6 +65,7 @@ class Mesh():
     parts="";
     def __init__(self):
         return;
+
 
     def writeData(self,f):
         f.write(struct.pack("<I",len(self.vertices)));
@@ -192,6 +81,9 @@ class Mesh():
             f.write(struct.pack("<f",v.color[0]));#VextexSize 3 (x,y,z)
             f.write(struct.pack("<f",v.color[1]));#VextexSize 3 (x,y,z)
             f.write(struct.pack("<f",v.color[2]));#VextexSize 3 (x,y,z)
+        for v in self.vertices:
+            f.write(struct.pack("<f",v.uv[0]));#VextexSize 3 (x,y,z)
+            f.write(struct.pack("<f",v.uv[1]));#VextexSize 3 (x,y,z)
         for v in self.vertices:
             if len(v.groups)>0:
                 f.write(struct.pack("f",v.groups[0].group));
@@ -261,7 +153,28 @@ class Exporter(bpy.types.Operator, ExportHelper):
             default=False,
             )
     
-        
+    def printvert(self,v):
+        sys.stdout.write("vert ")
+        sys.stdout.write("co(")
+        sys.stdout.write(str(v.co[0]))
+        sys.stdout.write(",")
+        sys.stdout.write(str(v.co[1]))
+        sys.stdout.write(",")
+        sys.stdout.write(str(v.co[2]))
+        sys.stdout.write(")")
+        sys.stdout.write("uv(")
+        sys.stdout.write(str(v.uv[0]))
+        sys.stdout.write(",")
+        sys.stdout.write(str(v.uv[1]))
+        sys.stdout.write(")\n")
+
+    def getvertid(self,varray,v):
+        for i in range(0,len(varray)):
+            v2=varray[i];
+            if(v.co[0]==v2.co[0] and v.co[1]==v2.co[1] and v.co[2]==v2.co[2] and v.uv[0]==v2.uv[0] and v.uv[1]==v2.uv[1]):
+                return i
+        return -1;
+              
     def procesarMesh(self, bobject):
         for mod in bobject.modifiers:
             if mod.type=='ARMATURE':
@@ -272,21 +185,33 @@ class Exporter(bpy.types.Operator, ExportHelper):
                 mod.show_viewport=True; 
         meshes_to_clear.append(mesh);
         omesh=Mesh();
-
-        omesh.vertices=[0]*len(mesh.vertices)
-        for i in range(0,len(mesh.vertices)):
-            v=Vertice();
-            v.co=mesh.vertices[i].co;
-            v.normal=mesh.vertices[i].normal;
-            v.groups=mesh.vertices[i].groups;
-            omesh.vertices[i]=v;
-        omesh.caras=mesh.polygons;
-        colores=[0]*10;
+        omesh.vertices=[]
+        omesh.caras=[];
         for p in mesh.polygons:
-            for li in p.loop_indices:
-                vi=mesh.loops[li].vertex_index;
-                omesh.vertices[vi].color= mesh.vertex_colors[0].data[li].color; 
-        omesh.colores=colores;
+            cara= Cara();
+            for vi in range(0,3):
+                vert=Vertice();
+                meshvid=p.vertices[vi]
+                bvert=mesh.vertices[meshvid]
+                vert.co=bvert.co;
+                vert.groups=bvert.groups;
+                vert.normal=bvert.normal;
+                for li in p.loop_indices:
+                    if meshvid==mesh.loops[li].vertex_index:
+                        if len(mesh.vertex_colors)>0:
+                            vert.color= mesh.vertex_colors[0].data[li].color;
+                        if len(mesh.uv_layers)>0:
+                            vert.uv= mesh.uv_layers[0].data[li].uv;
+                vertid= self.getvertid(omesh.vertices,vert);
+                if vertid==-1:
+                    cara.vertices[vi]=len(omesh.vertices);
+                    omesh.vertices.append(vert)
+        #            self.printvert(vert);
+                else:
+                    cara.vertices[vi]=vertid;
+
+            omesh.caras.append(cara);
+        print(len(omesh.vertices))
         return omesh;
         
     def procesarObjetoMapa(self, bobject,f):
