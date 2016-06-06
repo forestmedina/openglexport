@@ -56,6 +56,11 @@ class Cara():
         self.vertices=[0]*3;
         return;
 
+class Grupo():
+    def __init__(self,group,weight):
+        self.group=group;
+        self.weight=weight
+        return;
 
 class Mesh():
     vertexFormat ="";
@@ -108,56 +113,73 @@ class Esqueleto():
     
     def __init__(self):
         self.huesos=[];
+        self.mapHuesos={};
         return;
+    def trimHuesos(self):
+        huesosAux=[];
+        i=0;
+        for h in self.huesos:
+            if h.use_deform:
+                self.mapHuesos[h.name]=i;
+                print("agregando:",h.name,":",i);
+                huesosAux.append(h);
+                i=i+1;
+        self.huesos=huesosAux;
+        
+
+
 
     def writeData(self,f):
-        f.write(struct.pack("<I",len(self.huesos)));
-        for h in self.huesos:
-            if h.parent is None:
-                f.write(struct.pack("<i",-1));
-            else:
-                f.write(struct.pack("<i",self.huesos.find(h.parent.name)));
-            f.write(struct.pack("<f",h.head_local.x));#VextexSize 3 (x,y,z)
-            f.write(struct.pack("<f",h.head_local.y));#VextexSize 3 (x,y,z)
-            f.write(struct.pack("<f",h.head_local.z));#VextexSize 3 (x,y,z)
-            f.write(struct.pack("<f",h.tail_local.x));#VextexSize 3 (x,y,z)
-            f.write(struct.pack("<f",h.tail_local.y));#VextexSize 3 (x,y,z)
-            f.write(struct.pack("<f",h.tail_local.z));#VextexSize 3 (x,y,z)
-            f.write(struct.pack("<f",h.matrix_local[0][0]));#VextexSize 3 (x,y,z)
-            f.write(struct.pack("<f",h.matrix_local[1][0]));#VextexSize 3 (x,y,z)
-            f.write(struct.pack("<f",h.matrix_local[2][0]));#VextexSize 3 (x,y,z)
-            f.write(struct.pack("<f",h.matrix_local[3][0]));#VextexSize 3 (x,y,z)
-            f.write(struct.pack("<f",h.matrix_local[0][1]));#VextexSize 3 (x,y,z)
-            f.write(struct.pack("<f",h.matrix_local[1][1]));#VextexSize 3 (x,y,z)
-            f.write(struct.pack("<f",h.matrix_local[2][1]));#VextexSize 3 (x,y,z)
-            f.write(struct.pack("<f",h.matrix_local[3][1]));#VextexSize 3 (x,y,z)
-            f.write(struct.pack("<f",h.matrix_local[0][2]));#VextexSize 3 (x,y,z)
-            f.write(struct.pack("<f",h.matrix_local[1][2]));#VextexSize 3 (x,y,z)
-            f.write(struct.pack("<f",h.matrix_local[2][2]));#VextexSize 3 (x,y,z)
-            f.write(struct.pack("<f",h.matrix_local[3][2]));#VextexSize 3 (x,y,z)
-            f.write(struct.pack("<f",h.matrix_local[0][3]));#VextexSize 3 (x,y,z)
-            f.write(struct.pack("<f",h.matrix_local[1][3]));#VextexSize 3 (x,y,z)
-            f.write(struct.pack("<f",h.matrix_local[2][3]));#VextexSize 3 (x,y,z)
-            f.write(struct.pack("<f",h.matrix_local[3][3]));#VextexSize 3 (x,y,z)
-            if h.name=="espada":
-                f.write(struct.pack("<i",1));#VextexSize 3 (x,y,z)
-            else:
-                f.write(struct.pack("<i",0));#VextexSize 3 (x,y,z)
 
-            if(h.name=="espada"):
-                f.write(struct.pack("<i",2));#VextexSize 3 (x,y,z)
-            elif h.name=="cuerpo":
-                f.write(struct.pack("<i",1));#VextexSize 3 (x,y,z)
-            elif h.name=="brazo.L":
-                f.write(struct.pack("<i",3));#VextexSize 3 (x,y,z)
-            elif h.name=="brazo.R":
-                f.write(struct.pack("<i",3));#VextexSize 3 (x,y,z)
-            elif h.name=="pierna.L":
-                f.write(struct.pack("<i",3));#VextexSize 3 (x,y,z)
-            elif h.name=="pierna.R":
-                f.write(struct.pack("<i",3));#VextexSize 3 (x,y,z)
-            else:
-                f.write(struct.pack("<i",1));#VextexSize 3 (x,y,z)
+        nhuesos=0;
+        for h in self.huesos:
+            if h.use_deform:
+                nhuesos=nhuesos+1
+        f.write(struct.pack("<I",nhuesos));
+        for h in self.huesos:
+            if h.use_deform:
+                f.write(bytearray(h.name+"\00","ascii"));
+                if h.parent is None:
+                    f.write(struct.pack("<I",0));
+                else:
+                    f.write(struct.pack("<I",1));
+                    f.write(bytearray(h.parent.name+"\00","ascii"));
+                f.write(struct.pack("<f",h.head_local.x));#VextexSize 3 (x,y,z)
+                f.write(struct.pack("<f",h.head_local.y));#VextexSize 3 (x,y,z)
+                f.write(struct.pack("<f",h.head_local.z));#VextexSize 3 (x,y,z)
+                f.write(struct.pack("<f",h.tail_local.x));#VextexSize 3 (x,y,z)
+                f.write(struct.pack("<f",h.tail_local.y));#VextexSize 3 (x,y,z)
+                f.write(struct.pack("<f",h.tail_local.z));#VextexSize 3 (x,y,z)
+                f.write(struct.pack("<f",h.matrix_local[0][0]));#VextexSize 3 (x,y,z)
+                f.write(struct.pack("<f",h.matrix_local[1][0]));#VextexSize 3 (x,y,z)
+                f.write(struct.pack("<f",h.matrix_local[2][0]));#VextexSize 3 (x,y,z)
+                f.write(struct.pack("<f",h.matrix_local[3][0]));#VextexSize 3 (x,y,z)
+                f.write(struct.pack("<f",h.matrix_local[0][1]));#VextexSize 3 (x,y,z)
+                f.write(struct.pack("<f",h.matrix_local[1][1]));#VextexSize 3 (x,y,z)
+                f.write(struct.pack("<f",h.matrix_local[2][1]));#VextexSize 3 (x,y,z)
+                f.write(struct.pack("<f",h.matrix_local[3][1]));#VextexSize 3 (x,y,z)
+                f.write(struct.pack("<f",h.matrix_local[0][2]));#VextexSize 3 (x,y,z)
+                f.write(struct.pack("<f",h.matrix_local[1][2]));#VextexSize 3 (x,y,z)
+                f.write(struct.pack("<f",h.matrix_local[2][2]));#VextexSize 3 (x,y,z)
+                f.write(struct.pack("<f",h.matrix_local[3][2]));#VextexSize 3 (x,y,z)
+                f.write(struct.pack("<f",h.matrix_local[0][3]));#VextexSize 3 (x,y,z)
+                f.write(struct.pack("<f",h.matrix_local[1][3]));#VextexSize 3 (x,y,z)
+                f.write(struct.pack("<f",h.matrix_local[2][3]));#VextexSize 3 (x,y,z)
+                f.write(struct.pack("<f",h.matrix_local[3][3]));#VextexSize 3 (x,y,z)
+                if(h.name=="espada" or h.name=="arma"):
+                    f.write(struct.pack("<i",4));#VextexSize 3 (x,y,z)
+                elif h.name=="cuerpo":
+                    f.write(struct.pack("<i",1));#VextexSize 3 (x,y,z)
+                elif h.name=="brazo.L":
+                    f.write(struct.pack("<i",3));#VextexSize 3 (x,y,z)
+                elif h.name=="brazo.R":
+                    f.write(struct.pack("<i",3));#VextexSize 3 (x,y,z)
+                elif h.name=="pierna.L":
+                    f.write(struct.pack("<i",3));#VextexSize 3 (x,y,z)
+                elif h.name=="pierna.R":
+                    f.write(struct.pack("<i",3));#VextexSize 3 (x,y,z)
+                else:
+                    f.write(struct.pack("<i",3));#VextexSize 3 (x,y,z)
 
 
 class Exporter(bpy.types.Operator, ExportHelper):
@@ -227,6 +249,7 @@ class Exporter(bpy.types.Operator, ExportHelper):
         omesh=Mesh();
         omesh.vertices=[]
         omesh.caras=[];
+        esq=self.procesarArmadura(bobject.parent);
         for p in mesh.polygons:
             cara= Cara();
             for vi in range(0,3):
@@ -234,7 +257,16 @@ class Exporter(bpy.types.Operator, ExportHelper):
                 meshvid=p.vertices[vi]
                 bvert=mesh.vertices[meshvid]
                 vert.co=bvert.co;
-                vert.groups=bvert.groups;
+                if not bobject.parent is None and bobject.parent.type=='ARMATURE':
+                    vert.groups=[]
+                    for g in bvert.groups:
+                        huesoAux=bobject.parent.data.bones[g.group];
+                        if huesoAux.use_deform :
+                            ngrupo=Grupo(esq.mapHuesos[huesoAux.name],g.weight);
+                            print("grupo (i,w):(",huesoAux.name,"(",ngrupo.group,")",ngrupo.weight,")")
+                            vert.groups.append(ngrupo);
+                else:
+                    vert.groups=bvert.groups;
                 vert.normal=bvert.normal;
                 for li in p.loop_indices:
                     if meshvid==mesh.loops[li].vertex_index:
@@ -267,11 +299,15 @@ class Exporter(bpy.types.Operator, ExportHelper):
         arm = bobject.data;
         esq=Esqueleto();
         esq.huesos=arm.bones;
+        esq.trimHuesos();
         return esq;
 
     def procesarAnimaciones(self, bobject,f):
         f.write(struct.pack("<I",len(bpy.data.actions))); 
+        esq=self.procesarArmadura(bobject);
+        print("writing acciones:",f.tell());
         for a in bpy.data.actions:
+            print("Accion:"+a.name);
             bobject.animation_data.action=a;
             inicio, fin = [int(x) for x in a.frame_range]
             fps=bpy.context.scene.render.fps;
@@ -286,21 +322,24 @@ class Exporter(bpy.types.Operator, ExportHelper):
                 f.write(struct.pack("<f",float(frame)/float(fps)));
                 bpy.context.scene.frame_set(frame);
                 i=i+1;
-                for h in bobject.pose.bones:
-                    matfix =mathutils.Matrix.Rotation(math.radians(-90), 4, "X");
-                    matorig =h.bone.matrix_local*matfix;
-                    matpose=h.matrix*matfix;
-                    mat=matpose*matorig.inverted();
-                    q=mat.to_quaternion();
-                    loc=h.matrix.translation-h.bone.matrix_local.translation;
+                for huesoId in esq.huesos:
+                    if huesoId.use_deform:
+                        h=bobject.pose.bones[huesoId.name]
+                        print(a.name,"::",h.name);
+                        matfix =mathutils.Matrix.Rotation(math.radians(-90), 4, "X");
+                        matorig =h.bone.matrix_local*matfix;
+                        matpose=h.matrix*matfix;
+                        mat=matpose*matorig.inverted();
+                        q=mat.to_quaternion();
+                        loc=h.matrix.translation-h.bone.matrix_local.translation;
 #                    q=h.rotation_quaternion;
-                    f.write(struct.pack("<f",loc.x));
-                    f.write(struct.pack("<f",loc.y));
-                    f.write(struct.pack("<f",loc.z));
-                    f.write(struct.pack("<f",q.x));
-                    f.write(struct.pack("<f",q.y));
-                    f.write(struct.pack("<f",q.z));
-                    f.write(struct.pack("<f",q.w));
+                        f.write(struct.pack("<f",loc.x));
+                        f.write(struct.pack("<f",loc.y));
+                        f.write(struct.pack("<f",loc.z));
+                        f.write(struct.pack("<f",q.x));
+                        f.write(struct.pack("<f",q.y));
+                        f.write(struct.pack("<f",q.z));
+                        f.write(struct.pack("<f",q.w));
             print("cuadros:"+str(i)); 
 
 
