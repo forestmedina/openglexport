@@ -90,15 +90,19 @@ class Mesh():
             f.write(struct.pack("<f",v.uv[0]));#VextexSize 3 (x,y,z)
             f.write(struct.pack("<f",v.uv[1]));#VextexSize 3 (x,y,z)
         for v in self.vertices:
-            if len(v.groups)>0:
-                f.write(struct.pack("f",v.groups[0].group));
-            else:
-                f.write(struct.pack("f",0));
+            ngroups=0;
+            for i in range(4):
+                if i>=len(v.groups):                    
+                    f.write(struct.pack("f",0));
+                else:
+                    f.write(struct.pack("f",v.groups[i].weight));
         for v in self.vertices:
-            if len(v.groups)>0:
-                f.write(struct.pack("f",v.groups[0].weight));
-            else:
-                f.write(struct.pack("f",0));
+            ngroups=0;
+            for i in range(4):
+                if i>=len(v.groups):                    
+                    f.write(struct.pack("f",0));
+                else:
+                    f.write(struct.pack("f",v.groups[i].weight));
         f.write(struct.pack("<I",len(self.caras)));
         for c in self.caras:
             f.write(struct.pack("<I",c.vertices[0]));#VextexSize 3 (x,y,z)
@@ -249,7 +253,8 @@ class Exporter(bpy.types.Operator, ExportHelper):
         omesh=Mesh();
         omesh.vertices=[]
         omesh.caras=[];
-        esq=self.procesarArmadura(bobject.parent);
+        if not bobject.parent is None and bobject.parent.type=='ARMATURE':
+            esq=self.procesarArmadura(bobject.parent);
         for p in mesh.polygons:
             cara= Cara();
             for vi in range(0,3):
