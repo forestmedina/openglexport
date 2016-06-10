@@ -95,14 +95,17 @@ class Mesh():
                 if i>=len(v.groups):                    
                     f.write(struct.pack("f",0));
                 else:
-                    f.write(struct.pack("f",v.groups[i].weight));
+                    f.write(struct.pack("f",v.groups[i].group));
         for v in self.vertices:
             ngroups=0;
+            if len(v.groups)>4:
+                print ("Descartando:",len(v.groups)-4)
             for i in range(4):
                 if i>=len(v.groups):                    
                     f.write(struct.pack("f",0));
                 else:
                     f.write(struct.pack("f",v.groups[i].weight));
+
         f.write(struct.pack("<I",len(self.caras)));
         for c in self.caras:
             f.write(struct.pack("<I",c.vertices[0]));#VextexSize 3 (x,y,z)
@@ -121,14 +124,18 @@ class Esqueleto():
         return;
     def trimHuesos(self):
         huesosAux=[];
-        i=0;
+
         for h in self.huesos:
             if h.use_deform:
-                self.mapHuesos[h.name]=i;
-                print("agregando:",h.name,":",i);
+
                 huesosAux.append(h);
-                i=i+1;
+
+        i=0;
         self.huesos=huesosAux;
+        for h in self.huesos:
+            print("agregando:",h.name,":",i);
+            self.mapHuesos[h.name]=i;
+            i+=1;
         
 
 
@@ -267,8 +274,12 @@ class Exporter(bpy.types.Operator, ExportHelper):
                     for g in bvert.groups:
                         huesoAux=bobject.parent.data.bones[g.group];
                         if huesoAux.use_deform :
-                            ngrupo=Grupo(esq.mapHuesos[huesoAux.name],g.weight);
-                            print("grupo (i,w):(",huesoAux.name,"(",ngrupo.group,")",ngrupo.weight,")")
+                            indiceHueso=esq.mapHuesos[huesoAux.name];
+                            ngrupo=Grupo(indiceHueso,g.weight);
+
+                            if g.group!=indiceHueso:
+                                print ("Diferentes:"+huesoAux.name+"!="+esq.huesos[indiceHueso].name)
+                                print("grupo (i,w):(",huesoAux.name,"(",ngrupo.group,")",ngrupo.weight,")")
                             vert.groups.append(ngrupo);
                 else:
                     vert.groups=bvert.groups;
@@ -330,7 +341,6 @@ class Exporter(bpy.types.Operator, ExportHelper):
                 for huesoId in esq.huesos:
                     if huesoId.use_deform:
                         h=bobject.pose.bones[huesoId.name]
-                        print(a.name,"::",h.name);
                         matfix =mathutils.Matrix.Rotation(math.radians(-90), 4, "X");
                         matorig =h.bone.matrix_local*matfix;
                         matpose=h.matrix*matfix;

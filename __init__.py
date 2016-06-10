@@ -14,7 +14,7 @@ if "bpy" in locals():
     if "gp3d" in locals():
         imp.reload(gp3d);
 else:
-    from gpbexporter.gp3d import (
+    from openglexport.gp3d import (
             Exporter,
             )
         
