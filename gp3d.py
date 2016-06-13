@@ -89,22 +89,21 @@ class Mesh():
         for v in self.vertices:
             f.write(struct.pack("<f",v.uv[0]));#VextexSize 3 (x,y,z)
             f.write(struct.pack("<f",v.uv[1]));#VextexSize 3 (x,y,z)
+        print("Group Exporting")
         for v in self.vertices:
-            ngroups=0;
+            print(v.co)
             for i in range(4):
                 if i>=len(v.groups):                    
-                    f.write(struct.pack("f",0));
+                    f.write(struct.pack("<f",0));
                 else:
-                    f.write(struct.pack("f",v.groups[i].group));
+                    print(v.groups[i].group,v.groups[i].weight)
+                    f.write(struct.pack("<f",v.groups[i].group));
         for v in self.vertices:
-            ngroups=0;
-            if len(v.groups)>4:
-                print ("Descartando:",len(v.groups)-4)
             for i in range(4):
                 if i>=len(v.groups):                    
-                    f.write(struct.pack("f",0));
+                    f.write(struct.pack("<f",0));
                 else:
-                    f.write(struct.pack("f",v.groups[i].weight));
+                    f.write(struct.pack("<f",v.groups[i].weight));
 
         f.write(struct.pack("<I",len(self.caras)));
         for c in self.caras:
@@ -127,7 +126,6 @@ class Esqueleto():
 
         for h in self.huesos:
             if h.use_deform:
-
                 huesosAux.append(h);
 
         i=0;
@@ -272,7 +270,7 @@ class Exporter(bpy.types.Operator, ExportHelper):
                 if not bobject.parent is None and bobject.parent.type=='ARMATURE':
                     vert.groups=[]
                     for g in bvert.groups:
-                        huesoAux=bobject.parent.data.bones[g.group];
+                        huesoAux=bobject.parent.data.bones[bobject.vertex_groups[g.group].name];
                         if huesoAux.use_deform :
                             indiceHueso=esq.mapHuesos[huesoAux.name];
                             ngrupo=Grupo(indiceHueso,g.weight);
