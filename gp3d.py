@@ -270,6 +270,8 @@ class Exporter(bpy.types.Operator, ExportHelper):
                 if not bobject.parent is None and bobject.parent.type=='ARMATURE':
                     vert.groups=[]
                     for g in bvert.groups:
+					    if not bobject.vertex_groups[g.group].name in bobject.parent.data.bones:
+						    continue;
                         huesoAux=bobject.parent.data.bones[bobject.vertex_groups[g.group].name];
                         if huesoAux.use_deform :
                             indiceHueso=esq.mapHuesos[huesoAux.name];
