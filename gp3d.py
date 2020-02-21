@@ -355,6 +355,11 @@ class Exporter(bpy.types.Operator, ExportHelper):
                         f.write(struct.pack("<f",q.y));
                         f.write(struct.pack("<f",q.z));
                         f.write(struct.pack("<f",q.w));
+            f.write(struct.pack("<I",len(pose_markers))) 
+            for marker in a.pose_markers:
+                f.write(bytearray(marker.name+"\00","ascii"));
+                f.write(struct.pack("<I",marker.frame))) 
+                
             print("cuadros:"+str(i)); 
 
 
