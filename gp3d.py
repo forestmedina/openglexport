@@ -270,8 +270,8 @@ class Exporter(bpy.types.Operator, ExportHelper):
                 if not bobject.parent is None and bobject.parent.type=='ARMATURE':
                     vert.groups=[]
                     for g in bvert.groups:
-					    if not bobject.vertex_groups[g.group].name in bobject.parent.data.bones:
-						    continue;
+                        if not bobject.vertex_groups[g.group].name in bobject.parent.data.bones:
+                            continue;
                         huesoAux=bobject.parent.data.bones[bobject.vertex_groups[g.group].name];
                         if huesoAux.use_deform :
                             indiceHueso=esq.mapHuesos[huesoAux.name];
@@ -355,10 +355,10 @@ class Exporter(bpy.types.Operator, ExportHelper):
                         f.write(struct.pack("<f",q.y));
                         f.write(struct.pack("<f",q.z));
                         f.write(struct.pack("<f",q.w));
-            f.write(struct.pack("<I",len(pose_markers))) 
+            f.write(struct.pack("<I",len(a.pose_markers))) 
             for marker in a.pose_markers:
                 f.write(bytearray(marker.name+"\00","ascii"));
-                f.write(struct.pack("<I",marker.frame))) 
+                f.write(struct.pack("<f",float(marker.frame)/float(fps))) 
                 
             print("cuadros:"+str(i)); 
 
