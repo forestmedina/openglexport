@@ -91,12 +91,12 @@ class Mesh():
             f.write(struct.pack("<f",v.uv[1]));#VextexSize 3 (x,y,z)
         print("Group Exporting")
         for v in self.vertices:
-            print(v.co)
+          #  print(v.co)
             for i in range(4):
                 if i>=len(v.groups):                    
                     f.write(struct.pack("<f",0));
                 else:
-                    print(v.groups[i].group,v.groups[i].weight)
+           #         print(v.groups[i].group,v.groups[i].weight)
                     f.write(struct.pack("<f",v.groups[i].group));
         for v in self.vertices:
             for i in range(4):
@@ -246,15 +246,17 @@ class Exporter(bpy.types.Operator, ExportHelper):
                 return i
         return -1;
               
-    def procesarMesh(self, bobject):
-        for mod in bobject.modifiers:
+    def procesarMesh(self, p_bobject):
+        for mod in p_bobject.modifiers:
             if mod.type=='ARMATURE':
-                mod.show_viewport=False; 
-        mesh = bobject.to_mesh(bpy.context.scene,True,'PREVIEW',True,False);
+                mod.show_viewport=False;
+        dg = bpy.context.evaluated_depsgraph_get()
+        bobject = p_bobject.evaluated_get(dg)
+        mesh = bobject.to_mesh();
         for mod in bobject.modifiers:
             if mod.type=='ARMATURE':
                 mod.show_viewport=True; 
-        meshes_to_clear.append(mesh);
+        meshes_to_clear.append(bobject);
         omesh=Mesh();
         omesh.vertices=[]
         omesh.caras=[];
@@ -290,7 +292,8 @@ class Exporter(bpy.types.Operator, ExportHelper):
                             vert.color= mesh.vertex_colors[0].data[li].color;
                         if len(mesh.uv_layers)>0:
                             vert.uv= mesh.uv_layers[0].data[li].uv;
-                vertid= self.getvertid(omesh.vertices,vert);
+                #vertid= self.getvertid(omesh.vertices,vert);
+                vertid=-1
                 if vertid==-1:
                     cara.vertices[vi]=len(omesh.vertices);
                     omesh.vertices.append(vert)
@@ -324,6 +327,7 @@ class Exporter(bpy.types.Operator, ExportHelper):
         print("writing acciones:",f.tell());
         for a in bpy.data.actions:
             print("Accion:"+a.name);
+            
             bobject.animation_data.action=a;
             inicio, fin = [int(x) for x in a.frame_range]
             fps=bpy.context.scene.render.fps;
@@ -342,9 +346,9 @@ class Exporter(bpy.types.Operator, ExportHelper):
                     if huesoId.use_deform:
                         h=bobject.pose.bones[huesoId.name]
                         matfix =mathutils.Matrix.Rotation(math.radians(-90), 4, "X");
-                        matorig =h.bone.matrix_local*matfix;
-                        matpose=h.matrix*matfix;
-                        mat=matpose*matorig.inverted();
+                        matorig =h.bone.matrix_local @ matfix;
+                        matpose=h.matrix @ matfix;
+                        mat=matpose @ matorig.inverted();
                         q=mat.to_quaternion();
                         loc=h.matrix.translation-h.bone.matrix_local.translation;
 #                    q=h.rotation_quaternion;
@@ -373,22 +377,26 @@ class Exporter(bpy.types.Operator, ExportHelper):
         if(self.expmapa):
             filemapa=open(dirname+"/"+filename+".map","w");
         for ob in bpy.data.objects:
-            if ob.type == 'MESH' and ob.is_visible(bpy.context.scene):
+            if ob.type == 'MESH' and ob.visible_get():
                 if(self.expmapa):
                     self.procesarObjetoMapa(ob,filemapa);
                     file = open(dirname+'/'+ob.name+'.mesh', 'bw');
                 else:
                     file = open(self.filepath, 'bw');
+                print("procesando mesh");
                 self.procesarMesh(ob).writeData(file);
                 file.close();
             if ob.type == 'ARMATURE':
-                file = open(self.filepath+".esq", 'bw');
-                self.procesarArmadura(ob).writeData(file);
-                self.procesarAnimaciones(ob,file);
-                file.close();
+                if ob.animation_data is not None:
+                    file = open(self.filepath+".esq", 'bw');
+                    print("procesando armadura");
+                    self.procesarArmadura(ob).writeData(file);
+                    print("procesando animaciones");
+                    self.procesarAnimaciones(ob,file);
+                    file.close();
         if(self.expmapa):
             filemapa.close();
         for m in meshes_to_clear:
-            bpy.data.meshes.remove(m);
+            m.to_mesh_clear();
         return result;
 

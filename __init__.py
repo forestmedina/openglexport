@@ -1,7 +1,7 @@
 bl_info = {
     "name":         "OpenglExportador",
     "author":       "forestmedina",
-    "blender":      (2,6,2),
+    "blender":      (2,80,0),
     "version":      (0,0,1),
     "location":     "File > Import-Export",
     "description":  "Exportar para OPENGL personalizado",
@@ -19,22 +19,25 @@ else:
             )
         
 import bpy;
-
+classes = (
+    Exporter,
+)
 
 def menu_func(self, context):
     self.layout.operator(Exporter.bl_idname, text="Opengl Personalizado(.mesh)");
 
 def register():
-   
-    bpy.utils.register_module(__name__);
-    bpy.types.INFO_MT_file_export.append(menu_func);
-    bpy.types.Object.colisionador=bpy.props.BoolProperty(name="colisionador",description="Este objeto sera usado como un colisionador",default=False,options={'HIDDEN'})
+    from bpy.utils import register_class
+    for cls in classes:
+        register_class(cls)
+    bpy.types.TOPBAR_MT_file_export.append(menu_func);
 
     
 def unregister():
-    import imp;
-    bpy.utils.unregister_module(__name__);
-    bpy.types.INFO_MT_file_export.remove(menu_func);
+    from bpy.utils import unregister_class
+    for cls in reversed(classes):
+        unregister_class(cls)
+    bpy.types.TOPBAR_MT_file_export.remove(menu_func);
 
 if __name__ == "__main__":
     register()
