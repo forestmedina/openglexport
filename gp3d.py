@@ -43,6 +43,7 @@ class PanelOpciones(bpy.types.Panel):
         self.layout.prop(obj, "colisionador","Colisionador");
 
 
+		
 class Vertice():
     def __init__(self):
         self.co=[0.0]*3;
@@ -61,6 +62,10 @@ class Grupo():
         self.group=group;
         self.weight=weight
         return;
+		
+		
+def group_sort_weight(value):
+    return value.weight
 
 class Mesh():
     vertexFormat ="";
@@ -92,11 +97,22 @@ class Mesh():
         print("Group Exporting")
         for v in self.vertices:
           #  print(v.co)
+            print("groups for vertices:",len(v.groups))
+            v.groups.sort(reverse=True, key=group_sort_weight)
+            if (len(v.groups)>4):
+                print("more than 4 groups",len(v.groups))
+                total=0
+                for j in range(len(v.groups)):
+                    if j >=4:
+                       total+=v.groups[j].weight
+                print("total weight loss: ",total)
+                if total> 0.2:
+                    print ("huge total loss")
             for i in range(4):
                 if i>=len(v.groups):                    
                     f.write(struct.pack("<f",0));
                 else:
-           #         print(v.groups[i].group,v.groups[i].weight)
+                    print(v.groups[i].group,v.groups[i].weight)
                     f.write(struct.pack("<f",v.groups[i].group));
         for v in self.vertices:
             for i in range(4):
@@ -246,13 +262,13 @@ class Exporter(bpy.types.Operator, ExportHelper):
                 return i
         return -1;
               
-    def procesarMesh(self, p_bobject):
+    def procesarMesh(self, p_bobject,depsgraph):
         for mod in p_bobject.modifiers:
             if mod.type=='ARMATURE':
                 mod.show_viewport=False;
         dg = bpy.context.evaluated_depsgraph_get()
         bobject = p_bobject.evaluated_get(dg)
-        mesh = bobject.to_mesh();
+        mesh = bobject.to_mesh(preserve_all_data_layers =True,depsgraph=depsgraph);
         for mod in bobject.modifiers:
             if mod.type=='ARMATURE':
                 mod.show_viewport=True; 
@@ -280,8 +296,9 @@ class Exporter(bpy.types.Operator, ExportHelper):
                             ngrupo=Grupo(indiceHueso,g.weight);
 
                             if g.group!=indiceHueso:
-                                print ("Diferentes:"+huesoAux.name+"!="+esq.huesos[indiceHueso].name)
-                                print("grupo (i,w):(",huesoAux.name,"(",ngrupo.group,")",ngrupo.weight,")")
+                                pass
+                                #print ("Diferentes:"+huesoAux.name+"!="+esq.huesos[indiceHueso].name)
+                                #print("grupo (i,w):(",huesoAux.name,"(",ngrupo.group,")",ngrupo.weight,")")
                             vert.groups.append(ngrupo);
                 else:
                     vert.groups=bvert.groups;
@@ -373,6 +390,7 @@ class Exporter(bpy.types.Operator, ExportHelper):
 #        bpy.ops.object.mode_set(mode='OBJECT');
         result = {'FINISHED'};
         dirname =os.path.dirname(self.filepath);
+        depsgraph = context.evaluated_depsgraph_get()
         filename=os.path.splitext(os.path.basename(self.filepath))[0];
         if(self.expmapa):
             filemapa=open(dirname+"/"+filename+".map","w");
@@ -384,7 +402,7 @@ class Exporter(bpy.types.Operator, ExportHelper):
                 else:
                     file = open(self.filepath, 'bw');
                 print("procesando mesh");
-                self.procesarMesh(ob).writeData(file);
+                self.procesarMesh(ob,depsgraph).writeData(file);
                 file.close();
             if ob.type == 'ARMATURE':
                 if ob.animation_data is not None:
