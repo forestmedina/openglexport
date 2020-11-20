@@ -86,6 +86,7 @@ class Mesh():
         for v in self.vertices:
             f.write(struct.pack("<f",v.normal[0]));#VextexSize 3 (x,y,z)
             f.write(struct.pack("<f",v.normal[1]));#VextexSize 3 (x,y,z)
+            f.write(struct.pack("<f",v.normal[2]));#VextexSize 3 (x,y,z)    
         for v in self.vertices:
             f.write(struct.pack("<f",v.color[0]));#VextexSize 3 (x,y,z)
             f.write(struct.pack("<f",v.color[1]));#VextexSize 3 (x,y,z)
