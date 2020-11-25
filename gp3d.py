@@ -302,7 +302,7 @@ class Exporter(bpy.types.Operator, ExportHelper):
                                 #print("grupo (i,w):(",huesoAux.name,"(",ngrupo.group,")",ngrupo.weight,")")
                             vert.groups.append(ngrupo);
                 else:
-                    vert.groups=bvert.groups;
+                    vert.groups=[]
                 vert.normal=bvert.normal;
                 for li in p.loop_indices:
                     if meshvid==mesh.loops[li].vertex_index:
