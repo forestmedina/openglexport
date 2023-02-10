@@ -388,23 +388,23 @@ class Exporter(bpy.types.Operator):
         dirname =self.directory;
         print(self.directory)
         if self.directory.endswith(".mesh"):
-            dirname=os.path.splitext(os.path.basename(self.directory))[0];
+            dirname=os.path.splitext(os.path.basename(self.directory))[0]
 
         for ob in bpy.data.objects:
             if ob.type == 'MESH' and ob.visible_get():
-                file = open(dirname + '/' + ob.name + '.mesh', 'bw');
-                print("procesando mesh");
-                self.procesarMesh(ob,depsgraph).writeData(file);
-                file.close();
+                file = open(dirname + '/' + ob.name + '.mesh', 'bw')
+                print("procesando mesh")
+                self.procesarMesh(ob,depsgraph).writeData(file)
+                file.close()
             if ob.type == 'ARMATURE':
                 if ob.animation_data is not None:
-                    file = open(self.directory+".esq", 'bw');
-                    print("procesando armadura");
-                    self.procesarArmadura(ob).writeData(file);
-                    print("procesando animaciones");
-                    self.procesarAnimaciones(ob,file);
-                    file.close();
+                    file = open(dirname+ '/' + ob.name +".esq", 'bw')
+                    print("procesando armadura")
+                    self.procesarArmadura(ob).writeData(file)
+                    print("procesando animaciones")
+                    self.procesarAnimaciones(ob,file)
+                    file.close()
         for m in meshes_to_clear:
-            m.to_mesh_clear();
-        return result;
+            m.to_mesh_clear()
+        return result
 

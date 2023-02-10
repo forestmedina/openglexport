@@ -62,13 +62,14 @@ processes = []
 max_processes=12
 finished = False
 index=0
+exported_count=0
 while not finished:
     pygame.event.pump()
     pygame.draw.rect(bar, (0, 90, 0), (0, 0, 400*progress, 40))
     text = font.render(str(index)+ " of " + str(total_files), True, (255, 255, 255))  # Render the text
 
     # Update the progress bar
-    progress = index/total_files
+    progress = exported_count/total_files
     window.fill((255, 255, 255))
 
     window.blit(bar, (0, 0))
@@ -78,22 +79,23 @@ while not finished:
     if index < len(files_to_process):
         root,file = files_to_process[index]
         if len(processes)<max_processes:
-            p=subprocess.Popen([blender_path, os.path.join(root, file), "--background", "--python", "./export.py", root],stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            p=subprocess.Popen([blender_path, os.path.join(root, file), "--background", "--python", "./export.py", root])
             processes.append(p)
             index += 1
     remove_list=[]
     for process in processes:
         result=process.poll()
-        if  result != None:
+        if  result is not None:
+            exported_count+=1
             remove_list.append(process)
             if result != 0:
                 print("Error exporting file ", process.args[len(process.args)-1])
                 print("**********************")
+                print(process.stdout)
                 print(process.stderr)
                 print("**********************")
                 print("\n\n")
     for remove_process in remove_list:
         processes.remove(remove_process)
     finished= len(processes) == 0
-
 pygame.quit()
