@@ -94,25 +94,25 @@ class Mesh():
         for v in self.vertices:
             f.write(struct.pack("<f",v.uv[0]));#VextexSize 3 (x,y,z)
             f.write(struct.pack("<f",v.uv[1]));#VextexSize 3 (x,y,z)
-        print("Group Exporting")
+        # print("Group Exporting")
         for v in self.vertices:
           #  print(v.co)
             if len(v.groups)>0:
                 v.groups.sort(reverse=True, key=group_sort_weight)
             if (len(v.groups)>4):
-                print("more than 4 groups",len(v.groups))
+                # print("more than 4 groups",len(v.groups))
                 total=0
                 for j in range(len(v.groups)):
                     if j >=4:
                        total+=v.groups[j].weight
-                print("total weight loss: ",total)
-                if total> 0.2:
-                    print ("huge total loss")
+                # print("total weight loss: ",total)
+                # if total> 0.2:
+                #     print ("huge total loss")
             for i in range(4):
                 if i>=len(v.groups):                    
                     f.write(struct.pack("<f",0));
                 else:
-                    print(v.groups[i].group,v.groups[i].weight)
+                    # print(v.groups[i].group,v.groups[i].weight)
                     f.write(struct.pack("<f",v.groups[i].group));
         for v in self.vertices:
             for i in range(4):
@@ -147,7 +147,7 @@ class Esqueleto():
         i=0;
         self.huesos=huesosAux;
         for h in self.huesos:
-            print("agregando:",h.name,":",i);
+            # print("agregando:",h.name,":",i);
             self.mapHuesos[h.name]=i;
             i+=1;
         
@@ -207,39 +207,16 @@ class Esqueleto():
                     f.write(struct.pack("<i",3));#VextexSize 3 (x,y,z)
 
 
-class Exporter(bpy.types.Operator, ExportHelper):
+class Exporter(bpy.types.Operator):
     bl_idname       = "export_opengl.gpb";
     bl_label        = "Exportador OPENGL personalizado";
     bl_options      = {'PRESET'};
-    filename_ext    = ".mesh";
+    directory  : bpy.props.StringProperty(
+        name="File Path",
+        description="Filepath used for exporting the file",
+        maxlen=1024
+    )
     objetos=[];
-    expmapa = bpy.props.BoolProperty(
-            name="Exportar como mapa",
-            description="Exporta todos los objetos como un Mapa",
-            default=False,
-            )
-    
-    def printvert(self,v):
-        sys.stdout.write("vert ")
-        sys.stdout.write("co(")
-        sys.stdout.write(str(v.co[0]))
-        sys.stdout.write(",")
-        sys.stdout.write(str(v.co[1]))
-        sys.stdout.write(",")
-
-
-class Exporter(bpy.types.Operator, ExportHelper):
-    bl_idname       = "export_opengl.gpb";
-    bl_label        = "Exportador OPENGL personalizado";
-    bl_options      = {'PRESET'};
-    filename_ext    = ".mesh";
-    objetos=[];
-    expmapa = bpy.props.BoolProperty(
-            name="Exportar como mapa",
-            description="Exporta todos los objetos como un Mapa",
-            default=False,
-            )
-    
     def printvert(self,v):
         sys.stdout.write("vert ")
         sys.stdout.write("co(")
@@ -323,7 +300,7 @@ class Exporter(bpy.types.Operator, ExportHelper):
                     cara.vertices[vi]=vertid;
 
             omesh.caras.append(cara);
-        print(len(omesh.vertices))
+        # print(len(omesh.vertices))
         return omesh;
         
     def procesarObjetoMapa(self, bobject,f):
@@ -345,15 +322,15 @@ class Exporter(bpy.types.Operator, ExportHelper):
     def procesarAnimaciones(self, bobject,f):
         f.write(struct.pack("<I",len(bpy.data.actions))); 
         esq=self.procesarArmadura(bobject);
-        print("writing acciones:",f.tell());
+        # print("writing acciones:",f.tell());
         for a in bpy.data.actions:
-            print("Accion:"+a.name);
+            # print("Accion:"+a.name);
             
             bobject.animation_data.action=a;
             inicio, fin = [int(x) for x in a.frame_range]
             fps=bpy.context.scene.render.fps;
             total=fin-inicio;
-            print("acciones:"+str(len(bpy.data.actions)));
+            # print("acciones:"+str(len(bpy.data.actions)));
 #            f.write(struct.pack("<I",len(a.name))); 
 #            if len(a.name)>0:
             f.write(bytearray(a.name+"\00","ascii"));
@@ -385,39 +362,48 @@ class Exporter(bpy.types.Operator, ExportHelper):
                 f.write(bytearray(marker.name+"\00","ascii"));
                 f.write(struct.pack("<f",float(marker.frame)/float(fps))) 
                 
-            print("cuadros:"+str(i)); 
+            # print("cuadros:"+str(i));
 
+    def invoke(self, context, _event):
+        import os
+        if not self.directory:
+            blend_filepath = context.blend_data.filepath
+            print("blend_filepath 1: ", blend_filepath)
+            if not blend_filepath:
+                blend_filepath = "untitled"
+            else:
+                blend_filepath = os.path.dirname(blend_filepath)
+            print("blend_filepath 2: ", blend_filepath)
+            self.directory = blend_filepath
+        self.execute(context)
+        return {'RUNNING_MODAL'}
 
     def execute(self, context):
+        print ( "Executing ")
         global meshes_to_clear;
         meshes_to_clear=[];
 #        bpy.ops.object.mode_set(mode='OBJECT');
         result = {'FINISHED'};
-        dirname =os.path.dirname(self.filepath);
         depsgraph = context.evaluated_depsgraph_get()
-        filename=os.path.splitext(os.path.basename(self.filepath))[0];
-        if(self.expmapa):
-            filemapa=open(dirname+"/"+filename+".map","w");
+        dirname =self.directory;
+        print(self.directory)
+        if self.directory.endswith(".mesh"):
+            dirname=os.path.splitext(os.path.basename(self.directory))[0];
+
         for ob in bpy.data.objects:
             if ob.type == 'MESH' and ob.visible_get():
-                if(self.expmapa):
-                    self.procesarObjetoMapa(ob,filemapa);
-                    file = open(dirname+'/'+ob.name+'.mesh', 'bw');
-                else:
-                    file = open(self.filepath, 'bw');
+                file = open(dirname + '/' + ob.name + '.mesh', 'bw');
                 print("procesando mesh");
                 self.procesarMesh(ob,depsgraph).writeData(file);
                 file.close();
             if ob.type == 'ARMATURE':
                 if ob.animation_data is not None:
-                    file = open(self.filepath+".esq", 'bw');
+                    file = open(self.directory+".esq", 'bw');
                     print("procesando armadura");
                     self.procesarArmadura(ob).writeData(file);
                     print("procesando animaciones");
                     self.procesarAnimaciones(ob,file);
                     file.close();
-        if(self.expmapa):
-            filemapa.close();
         for m in meshes_to_clear:
             m.to_mesh_clear();
         return result;
