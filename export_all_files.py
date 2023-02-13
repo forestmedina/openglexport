@@ -2,7 +2,7 @@ import os
 import subprocess
 import sys
 import pygame
-
+import psutil
 def  isProcessRunnin(p):
     return p.poll() == None
 
@@ -63,10 +63,11 @@ max_processes=12
 finished = False
 index=0
 exported_count=0
+map_pid={}
 while not finished:
     pygame.event.pump()
     pygame.draw.rect(bar, (0, 90, 0), (0, 0, 400*progress, 40))
-    text = font.render(str(index)+ " of " + str(total_files), True, (255, 255, 255))  # Render the text
+    text = font.render(str(exported_count)+ " of " + str(total_files), True, (255, 255, 255))  # Render the text
 
     # Update the progress bar
     progress = exported_count/total_files
@@ -79,7 +80,7 @@ while not finished:
     if index < len(files_to_process):
         root,file = files_to_process[index]
         if len(processes)<max_processes:
-            p=subprocess.Popen([blender_path, os.path.join(root, file), "--background", "--python", "./export.py", root])
+            p=subprocess.Popen([blender_path, os.path.join(root, file), "--background", "--python", "./export.py", root],stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             processes.append(p)
             index += 1
     remove_list=[]
@@ -95,6 +96,23 @@ while not finished:
                 print(process.stderr)
                 print("**********************")
                 print("\n\n")
+            else:
+                print("Finished  exporting  ", process.args[len(process.args) - 1])
+        else:
+            if process.pid not in map_pid:
+                uprocess=psutil.Process(process.pid)
+                map_pid[process.pid]=uprocess
+                uprocess.cpu_percent(0)
+            else:
+                uprocess=map_pid[process.pid]
+                try:
+                    if uprocess.cpu_percent(0)==0 :
+                        print ("Process Stalled ? : ", process.args[len(process.args) - 1])
+                except psutil.NoSuchProcess:
+                    del map_pid[process.pid]
+
+
+
     for remove_process in remove_list:
         processes.remove(remove_process)
     finished= len(processes) == 0
