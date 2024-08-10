@@ -3,7 +3,7 @@ Created on 10/05/2013
 
 @author: forestmedina
 '''
-
+import shutil
 import bpy
 import sys
 import os
@@ -332,6 +332,7 @@ class Exporter(bpy.types.Operator):
     def procesarAnimaciones(self, bobject,f):
         f.write(struct.pack("<I",len(bpy.data.actions))) 
         esq=self.procesarArmadura(bobject)
+        original_action=bobject.animation_data.action
         # print("writing acciones:",f.tell())
         for a in bpy.data.actions:
             # print("Accion:"+a.name)
@@ -373,6 +374,7 @@ class Exporter(bpy.types.Operator):
                 f.write(struct.pack("<f",float(marker.frame)/float(fps))) 
                 
             # print("cuadros:"+str(i))
+            bobject.animation_data.action=original_action
 
     def invoke(self, context, _event):
         import os
@@ -402,18 +404,38 @@ class Exporter(bpy.types.Operator):
 
         for ob in bpy.data.objects:
             if ob.type == 'MESH' and ob.visible_get():
-                file = open(dirname + '/' + ob.name + '.mesh', 'bw')
-                print("procesando mesh")
-                self.procesarMesh(ob,depsgraph).writeData(file)
-                file.close()
-            if ob.type == 'ARMATURE':
-                if ob.animation_data is not None:
-                    file = open(dirname+ '/' + os.path.basename(dirname) +".mesh.esq", 'bw')
-                    print("procesando armadura")
-                    self.procesarArmadura(ob).writeData(file)
-                    print("procesando animaciones")
-                    self.procesarAnimaciones(ob,file)
+                mesh_file_name=dirname + '/' + ob.name + '.mesh'
+                mesh_temp_file_name=dirname + '/' + ob.name + '.mesh.tmp'
+                file = open(mesh_temp_file_name, 'bw')
+                try:
+                    print("procesando mesh")
+                    self.procesarMesh(ob,depsgraph).writeData(file)
+                finally:
                     file.close()
+                try:
+                    if os.path.exists(mesh_file_name):
+                            os.remove(mesh_file_name)
+                    os.rename(mesh_temp_file_name,mesh_file_name)
+                except Exception as ex:
+                    print(ex)
+            if ob.type == 'ARMATURE':
+                esq_file_name=dirname+ '/' + os.path.basename(dirname) +".mesh.esq"
+                esq_file_name_temp=dirname+ '/' + os.path.basename(dirname) +".mesh.esq.tmp"
+                if ob.animation_data is not None:
+                    file = open(esq_file_name_temp, 'bw')
+                    try:
+                        print("procesando armadura")
+                        self.procesarArmadura(ob).writeData(file)
+                        print("procesando animaciones")
+                        self.procesarAnimaciones(ob,file)
+                    finally:
+                        file.close()
+                    try:
+                        if os.path.exists(esq_file_name):
+                            os.remove(esq_file_name)
+                        os.rename(esq_file_name_temp, esq_file_name)
+                    except Exception as ex:
+                        print(ex)
         for m in meshes_to_clear:
             m.to_mesh_clear()
         return result
