@@ -402,6 +402,12 @@ class Exporter(bpy.types.Operator):
         if self.directory.endswith(".mesh"):
             dirname=os.path.splitext(os.path.basename(self.directory))[0]
 
+        # Remove all existing .mesh files before exporting
+        if os.path.isdir(dirname):
+            for f in os.listdir(dirname):
+                if f.endswith('.mesh'):
+                    os.remove(os.path.join(dirname, f))
+
         for ob in bpy.data.objects:
             if ob.type == 'MESH' and ob.visible_get():
                 mesh_file_name=dirname + '/' + ob.name + '.mesh'
