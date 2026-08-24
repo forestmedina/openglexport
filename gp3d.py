@@ -329,52 +329,68 @@ class Exporter(bpy.types.Operator):
         esq.trimHuesos()
         return esq
 
-    def procesarAnimaciones(self, bobject,f):
-        f.write(struct.pack("<I",len(bpy.data.actions))) 
-        esq=self.procesarArmadura(bobject)
-        original_action=bobject.animation_data.action
-        # print("writing acciones:",f.tell())
+    def escribirAnimacion(self, bobject, esq, a, f):
+        # Writes a single action as a standalone .anim record:
+        #   name\0, frameCount, per-frame (time + per-deform-bone loc+quat),
+        #   eventCount, per-event (name\0 + time).
+        # Byte layout matches the per-animation block the engine's load_animation()
+        # reads; the frame stride is the skeleton's deform-bone order.
+        inicio, fin = [int(x) for x in a.frame_range]
+        fps = bpy.context.scene.render.fps
+        total = fin - inicio
+        f.write(bytearray(a.name + "\00", "ascii"))
+        f.write(struct.pack("<I", total))  # Cantidad de frames
+        for frame in range(inicio, fin):
+            f.write(struct.pack("<f", float(frame) / float(fps)))
+            bpy.context.scene.frame_set(frame)
+            for huesoId in esq.huesos:
+                if huesoId.use_deform:
+                    h = bobject.pose.bones[huesoId.name]
+                    matfix = mathutils.Matrix.Rotation(math.radians(-90), 4, "X")
+                    matorig = h.bone.matrix_local @ matfix
+                    matpose = h.matrix @ matfix
+                    mat = matpose @ matorig.inverted()
+                    q = mat.to_quaternion()
+                    loc = h.matrix.translation - h.bone.matrix_local.translation
+                    f.write(struct.pack("<f", loc.x))
+                    f.write(struct.pack("<f", loc.y))
+                    f.write(struct.pack("<f", loc.z))
+                    f.write(struct.pack("<f", q.x))
+                    f.write(struct.pack("<f", q.y))
+                    f.write(struct.pack("<f", q.z))
+                    f.write(struct.pack("<f", q.w))
+        f.write(struct.pack("<I", len(a.pose_markers)))
+        for marker in a.pose_markers:
+            f.write(bytearray(marker.name + "\00", "ascii"))
+            f.write(struct.pack("<f", float(marker.frame) / float(fps)))
+
+    def exportarAnimaciones(self, bobject, dirname):
+        # One .anim file per action under <dirname>/animations/. Works whether the
+        # .blend holds every action (body.blend) or a single action (per-animation
+        # editing file). The filename sanitizes '.', but the real action name is
+        # stored inside the file so the engine keys animations by their true name.
+        anim_dir = dirname + '/animations'
+        os.makedirs(anim_dir, exist_ok=True)
+        esq = self.procesarArmadura(bobject)
+        original_action = bobject.animation_data.action
         for a in bpy.data.actions:
-            # print("Accion:"+a.name)
-            
-            bobject.animation_data.action=a
-            inicio, fin = [int(x) for x in a.frame_range]
-            fps=bpy.context.scene.render.fps
-            total=fin-inicio
-            # print("acciones:"+str(len(bpy.data.actions)))
-#            f.write(struct.pack("<I",len(a.name))) 
-#            if len(a.name)>0:
-            f.write(bytearray(a.name+"\00","ascii"))
-            f.write(struct.pack("<I",total)) #Cantidad de frames
-            i=0
-            for frame in range(inicio,fin):
-                f.write(struct.pack("<f",float(frame)/float(fps)))
-                bpy.context.scene.frame_set(frame)
-                i=i+1
-                for huesoId in esq.huesos:
-                    if huesoId.use_deform:
-                        h=bobject.pose.bones[huesoId.name]
-                        matfix =mathutils.Matrix.Rotation(math.radians(-90), 4, "X")
-                        matorig =h.bone.matrix_local @ matfix
-                        matpose=h.matrix @ matfix
-                        mat=matpose @ matorig.inverted()
-                        q=mat.to_quaternion()
-                        loc=h.matrix.translation-h.bone.matrix_local.translation
-#                    q=h.rotation_quaternion
-                        f.write(struct.pack("<f",loc.x))
-                        f.write(struct.pack("<f",loc.y))
-                        f.write(struct.pack("<f",loc.z))
-                        f.write(struct.pack("<f",q.x))
-                        f.write(struct.pack("<f",q.y))
-                        f.write(struct.pack("<f",q.z))
-                        f.write(struct.pack("<f",q.w))
-            f.write(struct.pack("<I",len(a.pose_markers))) 
-            for marker in a.pose_markers:
-                f.write(bytearray(marker.name+"\00","ascii"))
-                f.write(struct.pack("<f",float(marker.frame)/float(fps))) 
-                
-            # print("cuadros:"+str(i))
-            bobject.animation_data.action=original_action
+            bobject.animation_data.action = a
+            safe_name = a.name.replace(".", "_")
+            anim_file = anim_dir + '/' + safe_name + '.anim'
+            anim_file_temp = anim_file + '.tmp'
+            file = open(anim_file_temp, 'bw')
+            try:
+                print("procesando animacion: " + a.name)
+                self.escribirAnimacion(bobject, esq, a, file)
+            finally:
+                file.close()
+            try:
+                if os.path.exists(anim_file):
+                    os.remove(anim_file)
+                os.rename(anim_file_temp, anim_file)
+            except Exception as ex:
+                print(ex)
+        bobject.animation_data.action = original_action
 
     def invoke(self, context, _event):
         import os
@@ -402,8 +418,11 @@ class Exporter(bpy.types.Operator):
         if self.directory.endswith(".mesh"):
             dirname=os.path.splitext(os.path.basename(self.directory))[0]
 
-        # Remove all existing .mesh files before exporting
-        if os.path.isdir(dirname):
+        # Remove stale .mesh files before a full-model export. Skip this for
+        # per-animation editing files: those library-link their rig (so
+        # bpy.data.libraries is non-empty) and cannot fully regenerate the mesh,
+        # so wiping here would destroy the model's real geometry.
+        if os.path.isdir(dirname) and not bpy.data.libraries:
             for f in os.listdir(dirname):
                 if f.endswith('.mesh'):
                     os.remove(os.path.join(dirname, f))
@@ -412,36 +431,52 @@ class Exporter(bpy.types.Operator):
             if ob.type == 'MESH' and ob.visible_get():
                 mesh_file_name=dirname + '/' + ob.name + '.mesh'
                 mesh_temp_file_name=dirname + '/' + ob.name + '.mesh.tmp'
-                file = open(mesh_temp_file_name, 'bw')
+                # A single problematic mesh (missing UV map, non-tri/quad bone-widget
+                # shape, etc.) must not abort the whole export — otherwise the armature
+                # animations that come after it are never written. Skip it with a
+                # warning instead. Real geometry meshes are unaffected.
                 try:
-                    print("procesando mesh")
-                    self.procesarMesh(ob,depsgraph).writeData(file)
+                    file = open(mesh_temp_file_name, 'bw')
+                    try:
+                        print("procesando mesh")
+                        self.procesarMesh(ob,depsgraph).writeData(file)
+                    finally:
+                        file.close()
+                    if os.path.exists(mesh_file_name):
+                        os.remove(mesh_file_name)
+                    os.rename(mesh_temp_file_name,mesh_file_name)
+                except Exception as ex:
+                    print("WARNING: skipping mesh", ob.name, ":", ex)
+                    try:
+                        os.remove(mesh_temp_file_name)
+                    except Exception:
+                        pass
+            # Only the animated deform rig carries animation_data; helper armatures
+            # (e.g. Auto-Rig-Pro's "rig_add") have none and must be skipped, else
+            # they would overwrite the real skeleton .esq with an empty one.
+            if ob.type == 'ARMATURE' and ob.animation_data is not None:
+                esq_file_name=dirname+ '/' + os.path.basename(dirname) +".mesh.esq"
+                esq_file_name_temp=dirname+ '/' + os.path.basename(dirname) +".mesh.esq.tmp"
+                # Skeleton-only .esq: bone block followed by an animation count of 0.
+                # Animations are now written as individual .anim files (see below);
+                # the trailing 0 keeps the engine loader's animation-count read valid.
+                file = open(esq_file_name_temp, 'bw')
+                try:
+                    print("procesando armadura")
+                    self.procesarArmadura(ob).writeData(file)
+                    file.write(struct.pack("<I", 0))
                 finally:
                     file.close()
                 try:
-                    if os.path.exists(mesh_file_name):
-                            os.remove(mesh_file_name)
-                    os.rename(mesh_temp_file_name,mesh_file_name)
+                    if os.path.exists(esq_file_name):
+                        os.remove(esq_file_name)
+                    os.rename(esq_file_name_temp, esq_file_name)
                 except Exception as ex:
                     print(ex)
-            if ob.type == 'ARMATURE':
-                esq_file_name=dirname+ '/' + os.path.basename(dirname) +".mesh.esq"
-                esq_file_name_temp=dirname+ '/' + os.path.basename(dirname) +".mesh.esq.tmp"
-                if ob.animation_data is not None:
-                    file = open(esq_file_name_temp, 'bw')
-                    try:
-                        print("procesando armadura")
-                        self.procesarArmadura(ob).writeData(file)
-                        print("procesando animaciones")
-                        self.procesarAnimaciones(ob,file)
-                    finally:
-                        file.close()
-                    try:
-                        if os.path.exists(esq_file_name):
-                            os.remove(esq_file_name)
-                        os.rename(esq_file_name_temp, esq_file_name)
-                    except Exception as ex:
-                        print(ex)
+                # Per-animation .anim files (only when the .blend carries actions).
+                if len(bpy.data.actions) > 0:
+                    print("procesando animaciones")
+                    self.exportarAnimaciones(ob, dirname)
         for m in meshes_to_clear:
             m.to_mesh_clear()
         return result
