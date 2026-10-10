@@ -148,6 +148,13 @@ class Esqueleto():
             if h.use_deform:
                 huesosAux.append(h)
 
+        # Deterministic bone order: sort deform bones by name (codepoint order).
+        # The engine resolves the hierarchy by bone NAME (Skeleton.cpp idxPadre),
+        # so array order is free as long as the .esq, the mesh skin indices and
+        # every .anim share it. Sorting here makes all three consistent and stable
+        # regardless of Blender version / rig edits (which was reordering arm.bones).
+        huesosAux.sort(key=lambda h: h.name)
+
         i=0
         self.huesos=huesosAux
         for h in self.huesos:
@@ -369,7 +376,12 @@ class Exporter(bpy.types.Operator):
         # .blend holds every action (body.blend) or a single action (per-animation
         # editing file). The filename sanitizes '.', but the real action name is
         # stored inside the file so the engine keys animations by their true name.
-        anim_dir = dirname + '/animations'
+        # If dirname IS already the animations folder (e.g. exporting a per-animation
+        # editing .blend in place), write here instead of nesting animations/animations/.
+        if os.path.basename(os.path.normpath(dirname)) == 'animations':
+            anim_dir = dirname
+        else:
+            anim_dir = dirname + '/animations'
         os.makedirs(anim_dir, exist_ok=True)
         esq = self.procesarArmadura(bobject)
         original_action = bobject.animation_data.action
